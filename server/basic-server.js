@@ -1,5 +1,6 @@
 /* Import node's http module: */
 var http = require('http');
+var handleRequest = require('./request-handler.js');
 
 
 // Every server needs to listen on a port with a unique number. The
@@ -39,3 +40,4 @@ server.listen(port, ip);
 // possibility of serving more requests. To stop your server, hit
 // Ctrl-C on the command line.
 
+module.exports = server;
