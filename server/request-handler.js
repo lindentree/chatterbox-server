@@ -29,14 +29,67 @@ var defaultCorsHeaders = {
 
 //**************************************************************/
 var requestHandler = function(request, response) {
-  let results = [];
-  request.on('data', (chunk) => {
+// See the note below about CORS headers.
+  var headers = defaultCorsHeaders;
+  headers['Content-Type'] = 'application/json';
+  // let body = [];
+  // request.on('error', (err) => {
+  //   console.error(err);
+  // }).on('data', (chunk) => {
+  //   body.push(chunk);
+  // }).on('end', () => {
+  //   body = Buffer.concat(body).toString();
+    
+  //   // at this point, `body` has the entire request body stored in it as a string
+  // });
+   
+  var statusCode;
+  var responseBody = {results:[]};
+  const database = [];
+  
+  if (request.url === '/classes/messages' || request.url === 'http://127.0.0.1:3000/classes/messages'){
+    if(request.method === 'GET' && database.length > 0){
+      statusCode = 200;
+      responseBody.results = database;
+      response.writeHead(statusCode, headers);
+      response.end(JSON.stringify(responseBody));
 
-    results.push(chunk);
-  }).on('end', () => {
-    results = Buffer.concat(results).toString();
-    // at this point, `body` has the entire request body stored in it as a string
-  });
+      console.log('check', responseBody);
+    } else if (request.method === 'GET') {
+        statusCode = 200;
+        response.writeHead(statusCode, headers);
+        response.end(JSON.stringify(responseBody));
+
+    } else if(request.method === 'POST'){
+        responseBody = {results:[]};
+        statusCode = 201;
+        let body = [];
+          request.on('data', (chunk) => {
+            body.push(chunk);
+             //console.log(chunk); //body[chunk]
+        }).on('end', () => {
+          body = Buffer.concat(body).toString();
+          // console.log(typeof body)
+          body = JSON.parse(body); //body is an object
+          responseBody.results.push(body);
+          console.log(responseBody)
+          database.push(body);
+          
+          
+          
+          response.writeHead(statusCode, headers);
+          response.end(JSON.stringify(responseBody));
+       
+        });
+         
+    } 
+  } else{
+    statusCode = 404;
+  }
+  
+  responseBody = JSON.stringify(responseBody)
+  response.writeHead(statusCode, headers);
+  response.end(responseBody);
   // Request and Response come from node's http module.
   //
   // They include information about both the incoming request, such as
@@ -53,23 +106,22 @@ var requestHandler = function(request, response) {
   // console.logs in your code.
   console.log('Serving request type ' + request.method + ' for url ' + request.url);
 
-     
+  
   // The outgoing status.
-  var statusCode = 200;
+  // statusCode = 200;
 
-  // See the note below about CORS headers.
-  var headers = defaultCorsHeaders;
+  
 
   // Tell the client we are sending them plain text.
   //
   // You will need to change this if you are sending something
   // other than plain text, like JSON or HTML.
-  headers['Content-Type'] = 'application/json';
-  const responseBody = JSON.stringify({ results: results });
+
+  
   // .writeHead() writes to the request line and headers of the response,
   // which includes the status and all headers.
-  response.writeHead(statusCode, headers);
-  
+  // response.writeHead(statusCode, headers);
+  // response.end(responseBody);
   
   // Make sure to always call response.end() - Node may not send
   // anything back to the client until you do. The string you pass to
@@ -78,7 +130,7 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-  response.end(responseBody);
+  // response.end(responseBody);
   
   
 };
@@ -99,4 +151,7 @@ var requestHandler = function(request, response) {
 //   'access-control-max-age': 10 // Seconds.
 // };
 
-module.exports = requestHandler;
+var exports = module.exports = {};
+
+
+module.exports.requestHandler = requestHandler;
