@@ -20,6 +20,9 @@ this file and include it in basic-server.js so that it actually works.
 //
 // Another way to get around this restriction is to serve you chat
 // client from this domain by setting up static file serving.
+const url = require('url');
+const _ = require('underscore')
+
 var defaultCorsHeaders = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -27,8 +30,18 @@ var defaultCorsHeaders = {
   'access-control-max-age': 10 // Seconds.
 };
 
+let newMessage;
+let database = {results:[]};
+let i = 0;
+database.results.push({ 
+  username: 'Jono', 
+  text: 'Do my bidding!',
+  objectId : i 
+});
 //**************************************************************/
 var requestHandler = function(request, response) {
+let pathname = url.parse(request.url).pathname;
+
 // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
   headers['Content-Type'] = 'application/json';
@@ -44,52 +57,47 @@ var requestHandler = function(request, response) {
   // });
    
   var statusCode;
-  var responseBody = {results:[]};
-  const database = [];
   
-  if (request.url === '/classes/messages' || request.url === 'http://127.0.0.1:3000/classes/messages'){
-    if(request.method === 'GET' && database.length > 0){
-      statusCode = 200;
-      responseBody.results = database;
-      response.writeHead(statusCode, headers);
-      response.end(JSON.stringify(responseBody));
-
-      console.log('check', responseBody);
-    } else if (request.method === 'GET') {
+  
+  if ( request.url === '/classes/messages' || request.url === 'http://127.0.0.1:3000/classes/messages'){
+    if (request.method === 'GET') {
         statusCode = 200;
         response.writeHead(statusCode, headers);
-        response.end(JSON.stringify(responseBody));
+        response.end(JSON.stringify(database));
 
     } else if(request.method === 'POST'){
-        responseBody = {results:[]};
-        statusCode = 201;
-        let body = [];
-          request.on('data', (chunk) => {
-            body.push(chunk);
-             //console.log(chunk); //body[chunk]
+        
+        request.on('data', data => {
+          newMessage = JSON.parse(data.toString());
+          i++;
+          _.extend(newMessage, {objectId: i});
         }).on('end', () => {
-          body = Buffer.concat(body).toString();
-          // console.log(typeof body)
-          body = JSON.parse(body); //body is an object
-          responseBody.results.push(body);
-          console.log(responseBody)
-          database.push(body);
           
+          database.results.push(newMessage)
           
-          
-          response.writeHead(statusCode, headers);
-          response.end(JSON.stringify(responseBody));
+          response.writeHead(201, headers);
+          response.end(newMessage);
        
-        });
-         
-    } 
-  } else{
-    statusCode = 404;
-  }
+        }); 
+    } else if (request.method === 'OPTIONS') {
+    
+        response.writeHead(200, headers);
+        response.end('OPTIONS SENT');
+      } else {
+        response.end('NO METHOD ROUTE FOUND')
   
-  responseBody = JSON.stringify(responseBody)
-  response.writeHead(statusCode, headers);
-  response.end(responseBody);
+
+      }
+
+  } else{
+      statusCode = 404;
+      response.writeHead(statusCode, headers);
+      response.end('404 ERROR')
+    }
+  
+  
+  // response.writeHead(statusCode, headers);
+  // response.end(JSON.stringify(database));
   // Request and Response come from node's http module.
   //
   // They include information about both the incoming request, such as
