@@ -40,4 +40,4 @@ server.listen(port, ip);
 // possibility of serving more requests. To stop your server, hit
 // Ctrl-C on the command line.
 
-module.exports = server;
+
