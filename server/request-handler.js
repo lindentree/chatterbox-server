@@ -30,118 +30,65 @@ var defaultCorsHeaders = {
   'access-control-max-age': 10 // Seconds.
 };
 
-let newMessage;
-let database = {results:[]};
-let i = 0;
-database.results.push({ 
-  username: 'Jono', 
-  text: 'Do my bidding!',
-  objectId : i 
-});
-//**************************************************************/
-var requestHandler = function(request, response) {
-let pathname = url.parse(request.url).pathname;
+
 
 // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
   headers['Content-Type'] = 'application/json';
-  // let body = [];
-  // request.on('error', (err) => {
-  //   console.error(err);
-  // }).on('data', (chunk) => {
-  //   body.push(chunk);
-  // }).on('end', () => {
-  //   body = Buffer.concat(body).toString();
-    
-  //   // at this point, `body` has the entire request body stored in it as a string
-  // });
-   
-  var statusCode;
-  
-  
-  if ( request.url === '/classes/messages' || request.url === 'http://127.0.0.1:3000/classes/messages'){
-    if (request.method === 'GET') {
-        statusCode = 200;
-        response.writeHead(statusCode, headers);
-        response.end(JSON.stringify(database));
 
-    } else if(request.method === 'POST'){
-        
-        request.on('data', data => {
-          newMessage = JSON.parse(data.toString());
-          i++;
-          _.extend(newMessage, {objectId: i});
-        }).on('end', () => {
-          
-          database.results.push(newMessage)
-          
-          response.writeHead(201, headers);
-          response.end(newMessage);
-       
-        }); 
-    } else if (request.method === 'OPTIONS') {
-    
-        response.writeHead(200, headers);
-        response.end('OPTIONS SENT');
-      } else {
-        response.end('NO METHOD ROUTE FOUND')
-  
+  var objectIdCounter = 1;
+  var messages = [];
 
-      }
 
-  } else{
-      statusCode = 404;
-      response.writeHead(statusCode, headers);
-      response.end('404 ERROR')
+//**************************************************************/
+var responseHandlers = {
+
+  sendResponse: function(response, data, statusCode) {
+    statusCode = statusCode || 200;
+    response.writeHead(statusCode, headers);
+    response.end(JSON.stringify(data));
+
+  },
+
+  collectData: function(request, callback) {
+    var data = '';
+    request.on('data', function(chunk) {
+      data += chunk;
+  });
+    request.on('end', function() {
+    callback(JSON.parse(data));
+    });
+  },
+
+  makeActionHandler: function(actionMap) {
+    return function(request, response) {
+      var action = actionMap[request.method];
+       if (action) {
+         action(request, response);
+       } else {
+         responseHandlers.sendResponse(response, '', 404);
+       }
     }
-  
-  
-  // response.writeHead(statusCode, headers);
-  // response.end(JSON.stringify(database));
-  // Request and Response come from node's http module.
-  //
-  // They include information about both the incoming request, such as
-  // headers and URL, and about the outgoing response, such as its status
-  // and content.
-  //
-  // Documentation for both request and response can be found in the HTTP section at
-  // http://nodejs.org/documentation/api/
-
-  // Do some basic logging.
-  //
-  // Adding more logging to your server can be an easy way to get passive
-  // debugging help, but you should always be careful about leaving stray
-  // console.logs in your code.
-  console.log('Serving request type ' + request.method + ' for url ' + request.url);
-
-  
-  // The outgoing status.
-  // statusCode = 200;
-
-  
-
-  // Tell the client we are sending them plain text.
-  //
-  // You will need to change this if you are sending something
-  // other than plain text, like JSON or HTML.
-
-  
-  // .writeHead() writes to the request line and headers of the response,
-  // which includes the status and all headers.
-  // response.writeHead(statusCode, headers);
-  // response.end(responseBody);
-  
-  // Make sure to always call response.end() - Node may not send
-  // anything back to the client until you do. The string you pass to
-  // response.end() will be the body of the response - i.e. what shows
-  // up in the browser.
-  //
-  // Calling .end "flushes" the response's internal buffer, forcing
-  // node to actually send all the data over to the client.
-  // response.end(responseBody);
-  
-  
+  }
 };
+
+var actions = {
+   'GET': function(request, response) {
+    responseHandlers.sendResponse(response, {results: messages});
+  },
+  'POST': function(request, response) {
+      responseHandlers.collectData(request, function(message) {
+      message.objectId = ++objectIdCounter;
+      messages.push(message);
+      responseHandlers.sendResponse(response, {objectId: message.objectId}, 201);
+    });
+  },
+  'OPTIONS': function(request, response) {
+    responseHandlers.sendResponse(response, null);
+  }
+
+
+}
 
 // // These headers will allow Cross-Origin Resource Sharing (CORS).
 // // This code allows this server to talk to websites that
@@ -159,7 +106,7 @@ let pathname = url.parse(request.url).pathname;
 //   'access-control-max-age': 10 // Seconds.
 // };
 
-var exports = module.exports = {};
+// var exports = module.exports = {};
 
 
-module.exports.requestHandler = requestHandler;
+exports.requestHandler = responseHandlers.makeActionHandler(actions);
