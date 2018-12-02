@@ -66,7 +66,7 @@ var responseHandlers = {
        if (action) {
          action(request, response);
        } else {
-         responseHandlers.sendResponse(response, '', 404);
+         responseHandlers.sendResponse(response, 'Not Found', 404);
        }
     }
   }

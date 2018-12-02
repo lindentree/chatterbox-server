@@ -18,7 +18,7 @@ var port = 3000;
 var ip = '127.0.0.1';
 
 var router = {
-  '/classes/messages': handleRequest.requestHandler
+  '/classes/messages': handleRequest.requestHandler //function(req, res)
   // ...
 };
 
@@ -30,13 +30,13 @@ var router = {
 // After creating the server, we will tell it to listen on the given port and IP. */
 var server = http.createServer(function(req, res) {
   console.log('Serving request type ' + req.method + ' for url ' + req.url);
-  console.log(handleRequest.requestHandler.sendResponse)
 
   var route = router[url.parse(req.url).pathname];
-  if (route) {
+  if (route ){
     route(req, res);
   } else {
-    handleRequest.requestHandler['sendResponse'](res, '', 404);
+    res.writeHead('404');
+    res.end('no data');
   }
 });
 
